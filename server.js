@@ -2,7 +2,7 @@ var express = require("express");
 var app = express();
 var io = require('socket.io');
 var http = require('http').Server(app);
-var Player = require("./Player").Player;
+var Player = require("./player").Player;
 
 app.use(express.static('public'));
 
@@ -10,8 +10,8 @@ app.get("/", function(req, res) {
     res.sendFile(__dirname + '/index.html');
 });
 
-http.listen(3000, function() {
-    console.log('listening on *:3000');
+http.listen(process.env.PORT, function() {
+    console.log('listening on *: ' + process.env.PORT);
 });
 var sio = io.listen(http);
 sio.sockets.on('connection', function(client) {
@@ -44,7 +44,7 @@ function onClientDisconnect() {
     if (!removePlayer) {
         console.log("Player not found: " + this.id);
         return;
-    };
+    }
 
     // Remove player from players array
     players.splice(players.indexOf(removePlayer), 1);
@@ -53,7 +53,7 @@ function onClientDisconnect() {
     this.broadcast.emit("remove player", {
         id: this.id
     });
-};
+}
 
 function onNewPlayer() {
     // Create a new player
@@ -93,14 +93,14 @@ function onNewPlayer() {
             rotation: existingPlayer.rotation,
             color: existingPlayer.color
         });
-    };
+    }
 
     // Add new player to the players array
     players.push(newPlayer);
-};
+}
 
 function playerById(id) {
-    for (i = 0; i < players.length; i++) {
+    for (var i = 0; i < players.length; i++) {
         if (players[i].id == id)
             return players[i];
     }
@@ -114,8 +114,8 @@ function onBulletShot(bullet) {
         x: bullet.x,
         y: bullet.y,
         angle: bullet.angle
-    })
-};
+    });
+}
 
 function onReportHit(data) {
     var player = playerById(data.id);
@@ -142,7 +142,7 @@ function onMovePlayer(data) {
     // Player not found
     if (!movePlayer) {
         return;
-    };
+    }
 
     // Update player position
     movePlayer.setX(data.x);
@@ -155,4 +155,4 @@ function onMovePlayer(data) {
         y: movePlayer.getY(),
         rotation: movePlayer.rotation
     });
-};
+}

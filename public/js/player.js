@@ -21,6 +21,7 @@ Player = function(game, color, x, y) {
 
     this.shipSprite.anchor.set(0.5);
     this.shipSprite.body.drag.set(250);
+    this.shipSprite.body.collideWorldBounds = true;
     this.shipSprite.animations.add('fly', [1, 2], 10, false);
     this.shipSprite.animations.add('standstill', [0], 1, false);
     this.shipSprite.animations.play('standstill');
