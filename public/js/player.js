@@ -1,71 +1,195 @@
 var bmd;
 var shipSprite;
 var lives = 3;
+var sprite;
+var doubleJumpAvailable = true;
+var lastJump;
+var aimsprite;
+var state;
 
-Player = function(game, color, x, y) {
+Player = function(state, x, y, spriteName) {
     var id;
-    this.heartsprites = [];
-    this.game = game;
+    this.game = state.game;
+    Phaser.Sprite.call(this, game, x,y, spriteName);
+    game.physics.enable(this);
+    this.aimsprite = game.make.sprite(25,15,'crosshair');
+    game.physics.enable(this.aimsprite);
+    this.aimsprite.anchor.y = 0.5;
+    this.aimsprite.anchor.x = 0.5;
+    this.aimsprite.pivot.x = 100;
+    this.aimsprite.angle = 180;
+    this.aimsprite.body.moves = false;
+    this.body.setSize(42, 70, -8, 10);
+    this.anchor.setTo(0.33,0.5);
+    this.addChild(this.aimsprite)
+    this.body.collideWorldBounds = true;
+    this.body.maxVelocity.y = 500;
+    this.animations.add('idle', [0, 1, 2, 3], 10, true);
+    this.animations.add('shoot', [4, 5, 6, 7], 10, false);
+    this.animations.add('walk', [8, 9, 10, 11], 5, true);    
+    this.animations.add('jump', [25], 1, true);
+    this.animations.play('idle');
+    game.add.existing(this);
+    game.camera.follow(this, Phaser.Camera.FOLLOW_LOCKON);
+    cursors = game.input.keyboard.createCursorKeys();
+    fireButton = game.input.keyboard.addKey(Phaser.Keyboard.CONTROL);
+    jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
-    this.shipSprite = game.add.sprite(x, y, 'ship');
+};
 
-    for (var i = 0; i < 3; i++) {
-        this.heartsprites[i] = game.add.sprite(30 + 30 * i, 30, 'heart');
-        this.heartsprites[i].fixedToCamera = true;
-        this.heartsprites[i].scale.setTo(2, 2);
-        this.heartsprites[i].visible = false;
+ Player.prototype = Object.create(Phaser.Sprite.prototype);
+ Player.prototype.constructor = Player;
+
+Player.prototype.moveLeft = function() {
+
+    if(this.scale.x == 1){
+        this.scale.x = -1;
+       // this.aimsprite.angle = 180 - this.aimsprite.angle;
     }
-
-    this.shipSprite.tint = color;
-    this.game.physics.enable(this.shipSprite, Phaser.Physics.ARCADE);
-
-    this.shipSprite.anchor.set(0.5);
-    this.shipSprite.body.drag.set(250);
-    this.shipSprite.body.collideWorldBounds = true;
-    this.shipSprite.animations.add('fly', [1, 2], 10, false);
-    this.shipSprite.animations.add('standstill', [0], 1, false);
-    this.shipSprite.animations.play('standstill');
+    
+    
+    this.body.velocity.x = -300;
+    this.animations.play('walk');  //now play the animation named "walk"
 };
 
-Player.prototype.steerLeft = function() {
-    this.shipSprite.body.angularVelocity = -300;
-};
+Player.prototype.moveRight = function() {
 
-Player.prototype.steerRight = function() {
-    this.shipSprite.body.angularVelocity = 300;
-};
-
-Player.prototype.moveForward = function() {
-    this.shipSprite.body.velocity.copyFrom(this.game.physics.arcade.velocityFromAngle(this.shipSprite.angle, 300));
-    if (this.shipSprite.animations.currentAnim.name != 'fly' && this.lives > 0) {
-        this.shipSprite.animations.play('fly');
+    if(this.scale.x == -1){
+        this.scale.x = 1;
     }
+    this.body.velocity.x = 300;
+    this.animations.play('walk');  //now play the animation named "walk"
 };
 
-Player.prototype.hit = function() {
-    lives -= 1;
-    if (lives <= 0) {
-      this.shipSprite.body.enable = false;
-      console.log('I cant move!');
+Player.prototype.jump = function() {
+    if(this.body.blocked.down){
+        this.lastJump = this.game.time.now;
+        this.doubleJumpAvailable = true;
+        this.body.velocity.y = -800;
+        this.animations.play('jump');
+
     }
+    else if(this.doubleJumpAvailable && this.game.time.now > this.lastJump + 150)
+    {
+        this.doubleJumpAvailable = false;
+        this.body.velocity.y = -800;
+        this.animations.play('jump');
+}
 };
 
-Player.prototype.updateHearts = function() {
-    for (var i = 0; i < 3; i++) {
-        if (i < lives)
-            this.heartsprites[i].visible = true;
-        else {
-            this.heartsprites[i].visible = false;
+Player.prototype.lowerCrosshair = function(){
+        if(this.withinRotationArea(this.aimsprite.angle + 2))
+        {
+            this.aimsprite.angle += 2;
         }
+};
+
+
+Player.prototype.withinRotationArea = function(angle){
+    if(angle > 20 && angle < 140)
+    {
+        return false;    
     }
+    
+    else if(angle > -140 && angle < -20){
+        return false;
+    }
+    
+    else{
+        return true;
+    }
+    
+    
 }
 
-Player.prototype.standstill = function() {
-    this.shipSprite.animations.play('standstill');
+Player.prototype.raiseCrosshair = function(){
+        if(this.withinRotationArea(this.aimsprite.angle - 2))
+
+        {
+            this.aimsprite.angle -= 2;
+        }
 };
 
+Player.prototype.shoot = function(x,y) {
+    this.animations.play('shoot');
+    var ray = new Phaser.Line();
+    var p1 = new Phaser.Point(x,y);
+    ray.fromAngle(x, y, game.physics.arcade.angleBetween(p1, this.aimsprite.world), 750);
+    var hits = groundLayer.getRayCastTiles(ray, 4, true,true);
+    if(hits.length > 0){
+        var shortestCoordinate = new Phaser.Point(-100, -100);
+        var distanceToPoint = 100000;
+        for(var i = 0; i<hits.length;i++){
+            var poi =  this.getPointOfImpact(ray, hits[i]);
+            var distance = game.math.distance(poi.x, poi.y, x,y);     
+            if(distance < distanceToPoint){
+                shortestCoordinate = poi;
+                distanceToPoint = distance;
+            }
+        }
+        this.tweenExplosion(shortestCoordinate);
+    }
+
+};
+
+Player.prototype.getPointOfImpact = function(ray, object){
+    var rayLine = ray.coordinatesOnLine(1);
+    for(var i = 0 ; i < rayLine.length; i++){
+        if(object.containsPoint(rayLine[i][0], rayLine[i][1]))
+        {
+            return new Phaser.Point(rayLine[i][0], rayLine[i][1]);
+        }
+    }
+    return new Phaser.Point(-100, -100);
+}
+
+Player.prototype.tweenExplosion = function(point){
+        var explosion = game.add.sprite(point.x, point.y, 'explosion');
+        explosion.scale.setTo(0.5);
+        explosion.anchor.setTo(0.5);
+        var killTween = game.add.tween(explosion.scale);
+        killTween.to({x:0,y:0}, 500, Phaser.Easing.Linear.None);
+        killTween.onComplete.addOnce(function(){
+            explosion.kill();
+        }, this);
+        killTween.start();
+
+}
+
+
+
+
 Player.prototype.update = function() {
-    this.shipSprite.body.angularVelocity = 0;
-    this.shipSprite.body.velocity.x = game.math.roundTo(this.shipSprite.body.velocity.x * 0.8, 0);
-    this.shipSprite.body.velocity.y = game.math.roundTo(this.shipSprite.body.velocity.y * 0.8, 0);
+    this.body.velocity.x = 0;
+         if (cursors.left.isDown)
+    {
+    	this.moveLeft();
+    }
+    else if (cursors.right.isDown)
+    {
+    	this.moveRight();    }
+
+    if (cursors.up.isDown)
+    {
+        this.raiseCrosshair();
+    }
+    else if (cursors.down.isDown)
+    {
+        this.lowerCrosshair();
+    }
+    
+    if(fireButton.isDown &&  game.time.now > nextFire) {
+        nextFire = game.time.now + fireRate;
+        if(this.scale.x == 1){
+            this.shoot(this.x + this.aimsprite.x, this.y + this.aimsprite.y);        
+        }    
+        else{
+            this.shoot(this.x - this.aimsprite.x, this.y + this.aimsprite.y);
+        }
+        
+    }
+    
+    if(jumpButton.isDown){
+    	this.jump();
+    }
 };
