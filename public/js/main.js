@@ -2,7 +2,7 @@
 var game = new Phaser.Game(
     1024,
     768,
-    Phaser.AUTO,
+    Phaser.CANVAS,
     'container', {
         preload: preload,
         create: create,
@@ -23,14 +23,13 @@ var nextFire = 0;
 
 // Preload assets
 function preload() {
-    game.load.spritesheet('cowboy', 'images/cowboy.png', 90, 90, 26);
-    game.load.tilemap('platform_tilemap', 'tilemaps/map.json', null, Phaser.Tilemap.TILED_JSON);
+    game.load.tilemap('platform_tilemap', 'tilemaps/map2.json', null, Phaser.Tilemap.TILED_JSON);
     game.load.image('tiles', 'images/tiles/tiles_spritesheet.png');
     game.load.image('fireball', 'images/items/fireball.png');
     game.load.image('explosion', 'images/explosion.png');
+    game.load.spritesheet('cowboy', 'images/cowboy.png', 45, 45, 26);
     game.load.image('crosshair', 'images/hud/crosshair_red_small.png');
     game.time.advancedTiming = true;
-
 }
 
 // Init
@@ -54,9 +53,14 @@ function playerById(id) {
     return;
 }
 
-function addPlayer(x, y){
-    var player = new Player(this, 10, 0, 'cowboy');
+function addPlayer(x, y, name){
+    var player = new Cowboy(this,Input.getPlayerOneControls(game),name, x, y);
     players.push(player);
+    if(players.length == 1)
+    {
+        game.camera.follow(player, Phaser.Camera.FOLLOW_PLATFORM);
+        game.camera.setSize(1024,768);
+    }
 }
 
 
@@ -77,9 +81,9 @@ function create() {
     groundLayer = map.createLayer('platformLayer');
     groundLayer.resizeWorld();
     map.setCollisionByExclusion([0],true, 'platformLayer');
-
-   // addPlayer(10,0);
-}
+    var name = prompt("Enter player name: ", "Player 1");
+    addPlayer(200,200, name);
+}   
 
 
 // Update
@@ -97,14 +101,12 @@ function handleCollisions(){
 }
 // Render some debug text on screen
 function render() {
-        if(players && true == false){
+        if(players && true == true){
             players.forEach(function (player){
-            game.debug.spriteInfo(player.aimsprite, 32, 32);
-            game.debug.body(player);
-            game.debug.body(player.aimsprite);
-
+                game.debug.bodyInfo(player, 32, 32);
+                game.debug.body(player);
             });
         }
         
-        game.debug.text(game.time.fps || '--', 2, 14, "#00ff00");   
+        //console.log(game.time.fps || '--');   
      }
